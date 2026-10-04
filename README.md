@@ -20,7 +20,7 @@ Unlike standard HTML-to-PDF rasterizers that strip active content, this tool use
 *   **Client-Side Obfuscation:** Integrated `javascript-obfuscator` pipeline applies StringArray encoding, Base64 wrapping, and string splitting to bypass static YARA/AV signatures before compilation.
 *   **Chrome PDFium Targeting:** Includes specialized interactive Widget injection to ensure payload execution triggers within Chrome's restrictive native PDF viewer.
 
----
+----
 
 ## 🎯 Injection Vectors (ISO 32000-1)
 
